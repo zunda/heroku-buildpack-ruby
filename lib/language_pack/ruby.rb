@@ -62,7 +62,7 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
   def compile
-    Skylight.instrument 'compile' do
+    Skylight.instrument 'ruby.compile' do
       Dir.chdir(build_path)
       remove_vendor_bundle
       install_ruby
@@ -121,31 +121,33 @@ private
   # fetch the ruby version from bundler
   # @return [String, nil] returns the ruby version if detected or nil if none is detected
   def ruby_version
-    return @ruby_version if @ruby_version_run
+    Skylight.instrument 'ruby.ruby_version' do
+      return @ruby_version if @ruby_version_run
 
-    @ruby_version_run     = true
-    @ruby_version_env_var = false
-    @ruby_version_set     = false
+      @ruby_version_run     = true
+      @ruby_version_env_var = false
+      @ruby_version_set     = false
 
-    old_system_path = "/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
-    @ruby_version = run_stdout("env PATH=#{old_system_path}:#{bundler_path}/bin GEM_PATH=#{bundler_path} bundle platform --ruby").chomp
+      old_system_path = "/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
+      @ruby_version = run_stdout("env PATH=#{bundler_path}/bin:#{old_system_path} GEM_PATH=#{bundler_path} bundle platform --ruby").chomp
 
-    if @ruby_version == "No ruby version specified" && ENV['RUBY_VERSION']
-      # for backwards compatibility.
-      # this will go away in the future
-      @ruby_version = ENV['RUBY_VERSION']
-      @ruby_version_env_var = true
-    elsif @ruby_version == "No ruby version specified"
-      if new_app?
-        @ruby_version = DEFAULT_RUBY_VERSION
-      elsif !@metadata.exists?("buildpack_ruby_version")
-        @ruby_version = "ruby-1.9.2"
+      if @ruby_version == "No ruby version specified" && ENV['RUBY_VERSION']
+        # for backwards compatibility.
+        # this will go away in the future
+        @ruby_version = ENV['RUBY_VERSION']
+        @ruby_version_env_var = true
+      elsif @ruby_version == "No ruby version specified"
+        if new_app?
+          @ruby_version = DEFAULT_RUBY_VERSION
+        elsif !@metadata.exists?("buildpack_ruby_version")
+          @ruby_version = "ruby-1.9.2"
+        else
+          @ruby_version = @metadata.read("buildpack_ruby_version").chomp
+        end
       else
-        @ruby_version = @metadata.read("buildpack_ruby_version").chomp
+        @ruby_version     = @ruby_version.sub('(', '').sub(')', '').split.join('-')
+        @ruby_version_set = true
       end
-    else
-      @ruby_version     = @ruby_version.sub('(', '').sub(')', '').split.join('-')
-      @ruby_version_set = true
     end
 
     @ruby_version
@@ -199,25 +201,29 @@ private
 
   # sets up the environment variables for the build process
   def setup_language_pack_environment
-    setup_ruby_install_env
+    Skylight.instrument 'ruby.setup_language_pack_environment' do
+      setup_ruby_install_env
 
-    config_vars = default_config_vars.each do |key, value|
-      ENV[key] ||= value
+      config_vars = default_config_vars.each do |key, value|
+        ENV[key] ||= value
+      end
+      ENV["GEM_HOME"] = slug_vendor_base
+      ENV["PATH"]     = "#{ruby_install_binstub_path}:#{slug_vendor_base}/bin:#{config_vars["PATH"]}"
     end
-    ENV["GEM_HOME"] = slug_vendor_base
-    ENV["PATH"]     = "#{ruby_install_binstub_path}:#{slug_vendor_base}/bin:#{config_vars["PATH"]}"
   end
 
   # sets up the profile.d script for this buildpack
   def setup_profiled
-    set_env_override "GEM_PATH", "$HOME/#{slug_vendor_base}:$GEM_PATH"
-    set_env_default  "LANG",     "en_US.UTF-8"
-    set_env_override "PATH",     "$HOME/bin:$HOME/#{slug_vendor_base}/bin:$PATH"
+    Skylight.instrument 'setup_profiled' do
+      set_env_override "GEM_PATH", "$HOME/#{slug_vendor_base}:$GEM_PATH"
+      set_env_default  "LANG",     "en_US.UTF-8"
+      set_env_override "PATH",     "$HOME/bin:$HOME/#{slug_vendor_base}/bin:$PATH"
 
-    if ruby_version_jruby?
-      set_env_default "JAVA_OPTS", default_java_opts
-      set_env_default "JRUBY_OPTS", default_jruby_opts
-      set_env_default "JAVA_TOOL_OPTIONS", default_java_tool_options
+      if ruby_version_jruby?
+        set_env_default "JAVA_OPTS", default_java_opts
+        set_env_default "JRUBY_OPTS", default_jruby_opts
+        set_env_default "JAVA_TOOL_OPTIONS", default_java_tool_options
+      end
     end
   end
 
@@ -230,52 +236,54 @@ private
   # install the vendored ruby
   # @return [Boolean] true if it installs the vendored ruby and false otherwise
   def install_ruby
-    return false unless ruby_version
+    Skylight.instrument 'ruby.install_ruby' do
+      return false unless ruby_version
 
-    invalid_ruby_version_message = <<ERROR
+      invalid_ruby_version_message = <<ERROR
 Invalid RUBY_VERSION specified: #{ruby_version}
 Valid versions: #{ruby_versions.join(", ")}
 ERROR
 
-    if build_ruby?
-      FileUtils.mkdir_p(build_ruby_path)
-      Dir.chdir(build_ruby_path) do
-        ruby_vm = ruby_version_rbx? ? "rbx" : "ruby"
-        run("curl #{VENDOR_URL}/#{ruby_version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz -s -o - | tar zxf -")
+      if build_ruby?
+        FileUtils.mkdir_p(build_ruby_path)
+        Dir.chdir(build_ruby_path) do
+          ruby_vm = ruby_version_rbx? ? "rbx" : "ruby"
+          run("curl #{VENDOR_URL}/#{ruby_version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz -s -o - | tar zxf -")
+        end
+        error invalid_ruby_version_message unless $?.success?
+      end
+
+      FileUtils.mkdir_p(slug_vendor_ruby)
+      Dir.chdir(slug_vendor_ruby) do
+        run("curl #{VENDOR_URL}/#{ruby_version}.tgz -s -o - | tar zxf -")
       end
       error invalid_ruby_version_message unless $?.success?
-    end
 
-    FileUtils.mkdir_p(slug_vendor_ruby)
-    Dir.chdir(slug_vendor_ruby) do
-      run("curl #{VENDOR_URL}/#{ruby_version}.tgz -s -o - | tar zxf -")
-    end
-    error invalid_ruby_version_message unless $?.success?
+      bin_dir = "bin"
+      FileUtils.mkdir_p bin_dir
+      Dir["#{slug_vendor_ruby}/bin/*"].each do |bin|
+        run("ln -s ../#{bin} #{bin_dir}")
+      end
 
-    bin_dir = "bin"
-    FileUtils.mkdir_p bin_dir
-    Dir["#{slug_vendor_ruby}/bin/*"].each do |bin|
-      run("ln -s ../#{bin} #{bin_dir}")
-    end
+      @metadata.write("buildpack_ruby_version", ruby_version)
 
-    @metadata.write("buildpack_ruby_version", ruby_version)
-
-    if !@ruby_version_env_var
-      topic "Using Ruby version: #{ruby_version}"
-      if !@ruby_version_set
-        warn(<<WARNING)
+      if !@ruby_version_env_var
+        topic "Using Ruby version: #{ruby_version}"
+        if !@ruby_version_set
+          warn(<<WARNING)
 You have not declared a Ruby version in your Gemfile.
 To set your Ruby version add this line to your Gemfile:"
 ruby '#{ruby_version.split("-").last}'"
 # See https://devcenter.heroku.com/articles/ruby-versions for more information."
 WARNING
-      end
-    else
-      warn(<<WARNING)
+        end
+      else
+        warn(<<WARNING)
 Using RUBY_VERSION: #{ruby_version}
 RUBY_VERSION support has been deprecated and will be removed entirely on August 1, 2012.
 See https://devcenter.heroku.com/articles/ruby-versions#selecting_a_version_of_ruby for more information.
 WARNING
+      end
     end
 
     true
@@ -287,18 +295,20 @@ WARNING
 
   # vendors JVM into the slug for JRuby
   def install_jvm
-    if ruby_version_jruby?
-      topic "Installing JVM: #{JVM_VERSION}"
+    Skylight.instrument 'ruby.install_jvm' do
+      if ruby_version_jruby?
+        topic "Installing JVM: #{JVM_VERSION}"
 
-      FileUtils.mkdir_p(slug_vendor_jvm)
-      Dir.chdir(slug_vendor_jvm) do
-        run("curl #{JVM_BASE_URL}/#{JVM_VERSION}.tar.gz -s -o - | tar xzf -")
-      end
+        FileUtils.mkdir_p(slug_vendor_jvm)
+        Dir.chdir(slug_vendor_jvm) do
+          run("curl #{JVM_BASE_URL}/#{JVM_VERSION}.tar.gz -s -o - | tar xzf -")
+        end
 
-      bin_dir = "bin"
-      FileUtils.mkdir_p bin_dir
-      Dir["#{slug_vendor_jvm}/bin/*"].each do |bin|
-        run("ln -s ../#{bin} #{bin_dir}")
+        bin_dir = "bin"
+        FileUtils.mkdir_p bin_dir
+        Dir["#{slug_vendor_jvm}/bin/*"].each do |bin|
+          run("ln -s ../#{bin} #{bin_dir}")
+        end
       end
     end
   end
@@ -318,10 +328,12 @@ WARNING
 
   # setup the environment so we can use the vendored ruby
   def setup_ruby_install_env
-    ENV["PATH"] = "#{ruby_install_binstub_path}:#{ENV["PATH"]}"
+    Skylight.instrument 'ruby.setup_ruby_install_env' do
+      ENV["PATH"] = "#{ruby_install_binstub_path}:#{ENV["PATH"]}"
 
-    if ruby_version_jruby?
-      ENV['JAVA_OPTS']  = default_java_opts
+      if ruby_version_jruby?
+        ENV['JAVA_OPTS']  = default_java_opts
+      end
     end
   end
 
@@ -333,12 +345,14 @@ WARNING
 
   # installs vendored gems into the slug
   def install_language_pack_gems
-    FileUtils.mkdir_p(slug_vendor_base)
-    Dir.chdir(slug_vendor_base) do |dir|
-      gems.each do |gem|
-        run("curl #{VENDOR_URL}/#{gem}.tgz -s -o - | tar xzf -")
+    Skylight.instrument 'ruby.install_language_pack_gems' do
+      FileUtils.mkdir_p(slug_vendor_base)
+      Dir.chdir(slug_vendor_base) do |dir|
+        gems.each do |gem|
+          run("curl #{VENDOR_URL}/#{gem}.tgz -s -o - | tar xzf -")
+        end
+        Dir["bin/*"].each {|path| run("chmod 755 #{path}") }
       end
-      Dir["bin/*"].each {|path| run("chmod 755 #{path}") }
     end
   end
 
@@ -350,8 +364,10 @@ WARNING
 
   # vendors binaries into the slug
   def install_binaries
-    binaries.each {|binary| install_binary(binary) }
-    Dir["bin/*"].each {|path| run("chmod +x #{path}") }
+    Skylight.instrument 'ruby.install_binaries' do
+      binaries.each {|binary| install_binary(binary) }
+      Dir["bin/*"].each {|path| run("chmod +x #{path}") }
+    end
   end
 
   # vendors individual binary into the slug
@@ -402,77 +418,79 @@ WARNING
 
   # runs bundler to install the dependencies
   def build_bundler
-    log("bundle") do
-      bundle_without = ENV["BUNDLE_WITHOUT"] || "development:test"
-      bundle_bin     = "bundle"
-      bundle_command = "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
+    Skylight.instrument 'ruby.build_bundler' do
+      log("bundle") do
+        bundle_without = ENV["BUNDLE_WITHOUT"] || "development:test"
+        bundle_bin     = "bundle"
+        bundle_command = "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
 
-      unless File.exist?("Gemfile.lock")
-        error "Gemfile.lock is required. Please run \"bundle install\" locally\nand commit your Gemfile.lock."
-      end
+        unless File.exist?("Gemfile.lock")
+          error "Gemfile.lock is required. Please run \"bundle install\" locally\nand commit your Gemfile.lock."
+        end
 
-      if has_windows_gemfile_lock?
-        warn(<<WARNING)
+        if has_windows_gemfile_lock?
+          warn(<<WARNING)
 Removing `Gemfile.lock` because it was generated on Windows.
 Bundler will do a full resolve so native gems are handled properly.
 This may result in unexpected gem versions being used in your app.
 WARNING
 
-        log("bundle", "has_windows_gemfile_lock")
-        File.unlink("Gemfile.lock")
-      else
-        # using --deployment is preferred if we can
-        bundle_command += " --deployment"
-        cache.load ".bundle"
-      end
+          log("bundle", "has_windows_gemfile_lock")
+          File.unlink("Gemfile.lock")
+        else
+          # using --deployment is preferred if we can
+          bundle_command += " --deployment"
+          cache.load ".bundle"
+        end
 
-      version = run_stdout("#{bundle_bin} version").strip
-      topic("Installing dependencies using #{version}")
+        version = run_stdout("#{bundle_bin} version").strip
+        topic("Installing dependencies using #{version}")
 
-      load_bundler_cache
+        load_bundler_cache
 
-      bundler_output = ""
-      Dir.mktmpdir("libyaml-") do |tmpdir|
-        libyaml_dir = "#{tmpdir}/#{LIBYAML_PATH}"
-        install_libyaml(libyaml_dir)
+        bundler_output = ""
+        Dir.mktmpdir("libyaml-") do |tmpdir|
+          libyaml_dir = "#{tmpdir}/#{LIBYAML_PATH}"
+          install_libyaml(libyaml_dir)
 
-        # need to setup compile environment for the psych gem
-        yaml_include   = File.expand_path("#{libyaml_dir}/include")
-        yaml_lib       = File.expand_path("#{libyaml_dir}/lib")
-        pwd            = run("pwd").chomp
-        bundler_path   = "#{pwd}/#{slug_vendor_base}/gems/#{BUNDLER_GEM_PATH}/lib"
-        # we need to set BUNDLE_CONFIG and BUNDLE_GEMFILE for
-        # codon since it uses bundler.
-        env_vars       = "env BUNDLE_GEMFILE=#{pwd}/Gemfile BUNDLE_CONFIG=#{pwd}/.bundle/config CPATH=#{yaml_include}:$CPATH CPPATH=#{yaml_include}:$CPPATH LIBRARY_PATH=#{yaml_lib}:$LIBRARY_PATH RUBYOPT=\"#{syck_hack}\""
-        env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.match(/^ruby-1\.8\.7/)
-        puts "Running: #{bundle_command}"
-        bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
+          # need to setup compile environment for the psych gem
+          yaml_include   = File.expand_path("#{libyaml_dir}/include")
+          yaml_lib       = File.expand_path("#{libyaml_dir}/lib")
+          pwd            = run("pwd").chomp
+          bundler_path   = "#{pwd}/#{slug_vendor_base}/gems/#{BUNDLER_GEM_PATH}/lib"
+          # we need to set BUNDLE_CONFIG and BUNDLE_GEMFILE for
+          # codon since it uses bundler.
+          env_vars       = "env BUNDLE_GEMFILE=#{pwd}/Gemfile BUNDLE_CONFIG=#{pwd}/.bundle/config CPATH=#{yaml_include}:$CPATH CPPATH=#{yaml_include}:$CPPATH LIBRARY_PATH=#{yaml_lib}:$LIBRARY_PATH RUBYOPT=\"#{syck_hack}\""
+          env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.match(/^ruby-1\.8\.7/)
+          puts "Running: #{bundle_command}"
+          bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
 
-      end
+        end
 
-      if $?.success?
-        log "bundle", :status => "success"
-        puts "Cleaning up the bundler cache."
-        pipe "#{bundle_bin} clean 2> /dev/null"
-        cache.store ".bundle"
-        cache.store "vendor/bundle"
+        if $?.success?
+          log "bundle", :status => "success"
+          puts "Cleaning up the bundler cache."
+          pipe "#{bundle_bin} clean 2> /dev/null"
+          cache.store ".bundle"
+          cache.store "vendor/bundle"
 
-        # Keep gem cache out of the slug
-        FileUtils.rm_rf("#{slug_vendor_base}/cache")
-      else
-        log "bundle", :status => "failure"
-        error_message = "Failed to install gems via Bundler."
-        puts "Bundler Output: #{bundler_output}"
-        if bundler_output.match(/Installing sqlite3 \([\w.]+\)( with native extensions)?\s+Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension./)
-          error_message += <<ERROR
+          # Keep gem cache out of the slug
+          FileUtils.rm_rf("#{slug_vendor_base}/cache")
+        else
+          log "bundle", :status => "failure"
+          error_message = "Failed to install gems via Bundler."
+          puts "Bundler Output: #{bundler_output}"
+          if bundler_output.match(/Installing sqlite3 \([\w.]+\)( with native extensions)?\s+Gem::Installer::ExtensionBuildError: ERROR: Failed to build gem native extension./)
+            error_message += <<ERROR
 
 
 Detected sqlite3 gem which is not supported on Heroku.
 https://devcenter.heroku.com/articles/sqlite3
 ERROR
-        end
+          end
 
-        error error_message
+          error error_message
+        end
       end
     end
   end
@@ -492,11 +510,12 @@ ERROR
 
   # writes ERB based database.yml for Rails. The database.yml uses the DATABASE_URL from the environment during runtime.
   def create_database_yml
-    log("create_database_yml") do
-      return unless File.directory?("config")
-      topic("Writing config/database.yml to read from DATABASE_URL")
-      File.open("config/database.yml", "w") do |file|
-        file.puts <<-DATABASE_YML
+    Skylight.instrument 'ruby.create_database_yml' do
+      log("create_database_yml") do
+        return unless File.directory?("config")
+        topic("Writing config/database.yml to read from DATABASE_URL")
+        File.open("config/database.yml", "w") do |file|
+          file.puts <<-DATABASE_YML
 <%
 
 require 'cgi'
@@ -551,6 +570,7 @@ params = CGI.parse(uri.query || "")
   <%= key %>: <%= value.first %>
 <% end %>
         DATABASE_YML
+        end
       end
     end
   end
@@ -599,13 +619,15 @@ params = CGI.parse(uri.query || "")
   end
 
   def run_assets_precompile_rake_task
-    if rake_task_defined?("assets:precompile")
-      require 'benchmark'
+    Skylight.instrument 'ruby.run_assets_precompile_rake_task' do
+      if rake_task_defined?("assets:precompile")
+        require 'benchmark'
 
-      topic "Running: rake assets:precompile"
-      time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
-      if $?.success?
-        puts "Asset precompilation completed (#{"%.2f" % time}s)"
+        topic "Running: rake assets:precompile"
+        time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
+        if $?.success?
+          puts "Asset precompilation completed (#{"%.2f" % time}s)"
+        end
       end
     end
   end

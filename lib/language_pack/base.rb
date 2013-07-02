@@ -60,9 +60,11 @@ class LanguagePack::Base
 
   # this is called to build the slug
   def compile
-    if @warnings.any?
-      topic "WARNINGS:"
-      puts @warnings.join("--\n")
+    Skylight.instrument 'base.compile' do
+      if @warnings.any?
+        topic "WARNINGS:"
+        puts @warnings.join("--\n")
+      end
     end
   end
 
