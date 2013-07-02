@@ -1,6 +1,7 @@
 source "https://rubygems.org"
 
 group :development, :test do
+  gem "skylight"
   gem "heroku_hatchet"
   gem "rspec-core"
   gem "rspec-expectations"
