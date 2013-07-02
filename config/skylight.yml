@@ -1,0 +1,9 @@
+---
+# The Skylight ID for the application.
+application: 5xc2wmJ09W5k
+
+# The authentication token for the application.
+authentication: Wr0QIlqTaaSSTi26X0lokuiAzUeGOYdHGnEaKeKbV4phcHBsaWNhdGlvbl9pZHM9NXhjMndtSjA5VzVrJnJvbGU9YWdlbnQ=
+
+agent:
+  strategy: 'embedded'
