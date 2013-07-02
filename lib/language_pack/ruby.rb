@@ -62,20 +62,22 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
   def compile
-    Dir.chdir(build_path)
-    remove_vendor_bundle
-    install_ruby
-    install_jvm
-    setup_language_pack_environment
-    setup_profiled
-    allow_git do
-      install_language_pack_gems
-      build_bundler
-      create_database_yml
-      install_binaries
-      run_assets_precompile_rake_task
+    Skylight.instrument 'compile' do
+      Dir.chdir(build_path)
+      remove_vendor_bundle
+      install_ruby
+      install_jvm
+      setup_language_pack_environment
+      setup_profiled
+      allow_git do
+        install_language_pack_gems
+        build_bundler
+        create_database_yml
+        install_binaries
+        run_assets_precompile_rake_task
+      end
+      super
     end
-    super
   end
 
 private
