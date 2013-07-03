@@ -141,7 +141,8 @@ private
       @ruby_version_set     = false
 
       old_system_path = "/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
-      @ruby_version = run_stdout("env PATH=#{bundler_path}/bin:#{old_system_path} GEM_PATH=#{bundler_path} bundle platform --ruby").chomp
+      #@ruby_version = run_stdout("env PATH=#{bundler_path}/bin:#{old_system_path} GEM_PATH=#{bundler_path} bundle platform --ruby").chomp
+      @ruby_version = run_stdout("#{bundler_path}/bin/bundle platform --ruby").chomp
 
       if @ruby_version == "No ruby version specified" && ENV['RUBY_VERSION']
         # for backwards compatibility.
