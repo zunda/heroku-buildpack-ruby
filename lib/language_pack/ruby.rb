@@ -41,7 +41,9 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
   def default_addons
-    add_dev_database_addon
+    Skylight.instrument "ruby.default_addons" do
+      add_dev_database_addon
+    end
   end
 
   def default_config_vars
