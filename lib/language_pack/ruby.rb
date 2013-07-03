@@ -613,7 +613,9 @@ params = CGI.parse(uri.query || "")
   # @param [String] the task in question
   # @return [Boolean] true if the rake task is defined in the app
   def rake_task_defined?(task)
-    run("env PATH=$PATH bundle exec rake #{task} --dry-run") && $?.success?
+    Skylight.instrument "ruby.rake_task_defined" do
+      run("env PATH=$PATH bundle exec rake #{task} --dry-run") && $?.success?
+    end
   end
 
   # executes the block with GIT_DIR environment variable removed since it can mess with the current working directory git thinks it's in
