@@ -2,19 +2,22 @@ require 'benchmark'
 require 'language_pack/shell_helpers'
 
 module Skylight
-  extend LanguagePack::ShellHelpers
+  def bench_msg(message)
+    Kernel.puts "=> #{message}"
+    $stdout.flush
+  end
 
   def self.instrument(name, *args)
     ret = nil
     time = Benchmark.realtime { ret = yield }
-    topic "#{name} : #{time}"
+    bench_msg "#{name} : #{time}"
 
     return ret
   end
   def self.trace(name, *args)
     ret = nil
     time = Benchmark.realtime { ret = yield }
-    topic "#{name} : #{time}"
+    bench_msg "#{name} : #{time}"
 
     return ret
   end
