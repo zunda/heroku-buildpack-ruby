@@ -7,5 +7,3 @@ authentication: Wr0QIlqTaaSSTi26X0lokuiAzUeGOYdHGnEaKeKbV4phcHBsaWNhdGlvbl9pZHM9
 
 agent:
   strategy: 'embedded'
-
-log_level: 'debug'
