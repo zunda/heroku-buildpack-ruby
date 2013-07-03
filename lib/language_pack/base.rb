@@ -20,13 +20,15 @@ class LanguagePack::Base
   # @param [String] the path of the build dir
   # @param [String] the path of the cache dir this is nil during detect and release
   def initialize(build_path, cache_path=nil)
-    @build_path = build_path
-    @cache      = LanguagePack::Cache.new(cache_path) if cache_path
-    @metadata   = LanguagePack::Metadata.new(@cache)
-    @id         = Digest::SHA1.hexdigest("#{Time.now.to_f}-#{rand(1000000)}")[0..10]
-    @warnings   = []
+    Skylight.instrument "base.initialize" do
+      @build_path = build_path
+      @cache      = LanguagePack::Cache.new(cache_path) if cache_path
+      @metadata   = LanguagePack::Metadata.new(@cache)
+      @id         = Digest::SHA1.hexdigest("#{Time.now.to_f}-#{rand(1000000)}")[0..10]
+      @warnings   = []
 
-    Dir.chdir build_path
+      Dir.chdir build_path
+    end
   end
 
   def self.===(build_path)
@@ -71,12 +73,14 @@ class LanguagePack::Base
   # collection of values passed for a release
   # @return [String] in YAML format of the result
   def release
-    setup_language_pack_environment
+    Skylight.instrument "base.release" do
+      setup_language_pack_environment
 
-    {
-      "addons" => default_addons,
-      "default_process_types" => default_process_types
-    }.to_yaml
+      {
+        "addons" => default_addons,
+        "default_process_types" => default_process_types
+      }.to_yaml
+    end
   end
 
   # log output
