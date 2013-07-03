@@ -260,14 +260,18 @@ ERROR
         FileUtils.mkdir_p(build_ruby_path)
         Dir.chdir(build_ruby_path) do
           ruby_vm = ruby_version_rbx? ? "rbx" : "ruby"
-          run("curl #{VENDOR_URL}/#{ruby_version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz -s -o - | tar zxf -")
+          Skylight.instrument "ruby.fetch_build_ruby" do
+            run("curl #{VENDOR_URL}/#{ruby_version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz -s -o - | tar zxf -")
+          end
         end
         error invalid_ruby_version_message unless $?.success?
       end
 
       FileUtils.mkdir_p(slug_vendor_ruby)
       Dir.chdir(slug_vendor_ruby) do
-        run("curl #{VENDOR_URL}/#{ruby_version}.tgz -s -o - | tar zxf -")
+        Skylight.instrument "ruby.fetch_ruby" do
+          run("curl #{VENDOR_URL}/#{ruby_version}.tgz -s -o - | tar zxf -")
+        end
       end
       error invalid_ruby_version_message unless $?.success?
 
