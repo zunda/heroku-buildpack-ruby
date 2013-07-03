@@ -91,12 +91,14 @@ private
   # the relative path to the bundler directory of gems
   # @return [String] resulting path
   def slug_vendor_base
-    if @slug_vendor_base
-      @slug_vendor_base
-    elsif @ruby_version == "ruby-1.8.7"
-      @slug_vendor_base = "vendor/bundle/1.8"
-    else
-      @slug_vendor_base = run(%q(ruby -e "require 'rbconfig';puts \"vendor/bundle/#{RUBY_ENGINE}/#{RbConfig::CONFIG['ruby_version']}\"")).chomp
+    Skylight.instrument 'ruby.slug_vendor_base' do
+      if @slug_vendor_base
+        @slug_vendor_base
+      elsif @ruby_version == "ruby-1.8.7"
+        @slug_vendor_base = "vendor/bundle/1.8"
+      else
+        @slug_vendor_base = run(%q(ruby -e "require 'rbconfig';puts \"vendor/bundle/#{RUBY_ENGINE}/#{RbConfig::CONFIG['ruby_version']}\"")).chomp
+      end
     end
   end
 
@@ -465,14 +467,17 @@ WARNING
           env_vars       = "env BUNDLE_GEMFILE=#{pwd}/Gemfile BUNDLE_CONFIG=#{pwd}/.bundle/config CPATH=#{yaml_include}:$CPATH CPPATH=#{yaml_include}:$CPPATH LIBRARY_PATH=#{yaml_lib}:$LIBRARY_PATH RUBYOPT=\"#{syck_hack}\""
           env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.match(/^ruby-1\.8\.7/)
           puts "Running: #{bundle_command}"
-          bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
-
+          Skylight.instrument "ruby.bundle_install" do
+            bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
+          end
         end
 
         if $?.success?
           log "bundle", :status => "success"
           puts "Cleaning up the bundler cache."
-          pipe "#{bundle_bin} clean 2> /dev/null"
+          Skylight.instrument "ruby.bundle_clean" do
+            pipe "#{bundle_bin} clean 2> /dev/null"
+          end
           cache.store ".bundle"
           cache.store "vendor/bundle"
 
@@ -500,13 +505,15 @@ ERROR
   # RUBYOPT line that requires syck_hack file
   # @return [String] require string if needed or else an empty string
   def syck_hack
-    syck_hack_file = File.expand_path(File.join(File.dirname(__FILE__), "../../vendor/syck_hack"))
-    ruby_version   = run_stdout('ruby -e "puts RUBY_VERSION"').chomp
-    # < 1.9.3 includes syck, so we need to use the syck hack
-    if Gem::Version.new(ruby_version) < Gem::Version.new("1.9.3")
-      "-r#{syck_hack_file}"
-    else
-      ""
+    Skylight.instrument "ruby.syck_hack" do
+      syck_hack_file = File.expand_path(File.join(File.dirname(__FILE__), "../../vendor/syck_hack"))
+      ruby_version   = run_stdout('ruby -e "puts RUBY_VERSION"').chomp
+      # < 1.9.3 includes syck, so we need to use the syck hack
+      if Gem::Version.new(ruby_version) < Gem::Version.new("1.9.3")
+        "-r#{syck_hack_file}"
+      else
+        ""
+      end
     end
   end
 
@@ -639,62 +646,66 @@ params = CGI.parse(uri.query || "")
   end
 
   def load_bundler_cache
-    cache.load "vendor"
+    Skylight.instrument "ruby.load_bundler_cache" do
+      cache.load "vendor"
 
-    full_ruby_version       = run_stdout(%q(ruby -v)).chomp
-    rubygems_version        = run_stdout(%q(gem -v)).chomp
-    heroku_metadata         = "vendor/heroku"
-    old_rubygems_version    = nil
-    ruby_version_cache      = "ruby_version"
-    buildpack_version_cache = "buildpack_version"
-    bundler_version_cache   = "bundler_version"
-    rubygems_version_cache  = "rubygems_version"
+      full_ruby_version       = run_stdout(%q(ruby -v)).chomp
+      rubygems_version        = run_stdout(%q(gem -v)).chomp
+      heroku_metadata         = "vendor/heroku"
+      old_rubygems_version    = nil
+      ruby_version_cache      = "ruby_version"
+      buildpack_version_cache = "buildpack_version"
+      bundler_version_cache   = "bundler_version"
+      rubygems_version_cache  = "rubygems_version"
 
-    old_rubygems_version = @metadata.read(ruby_version_cache).chomp if @metadata.exists?(ruby_version_cache)
+      old_rubygems_version = @metadata.read(ruby_version_cache).chomp if @metadata.exists?(ruby_version_cache)
 
-    # fix bug from v37 deploy
-    if File.exists?("vendor/ruby_version")
-      puts "Broken cache detected. Purging build cache."
-      cache.clear("vendor")
-      FileUtils.rm_rf("vendor/ruby_version")
-      purge_bundler_cache
-    # fix bug introduced in v38
-    elsif !@metadata.exists?(buildpack_version_cache) && @metadata.exists?(ruby_version_cache)
-      puts "Broken cache detected. Purging build cache."
-      purge_bundler_cache
-    elsif cache.exists?(bundler_cache) && @metadata.exists?(ruby_version_cache) && full_ruby_version != @metadata.read(ruby_version_cache).chomp
-      puts "Ruby version change detected. Clearing bundler cache."
-      puts "Old: #{@metadata.read(ruby_version_cache).chomp}"
-      puts "New: #{full_ruby_version}"
-      purge_bundler_cache
-    end
+      # fix bug from v37 deploy
+      if File.exists?("vendor/ruby_version")
+        puts "Broken cache detected. Purging build cache."
+        cache.clear("vendor")
+        FileUtils.rm_rf("vendor/ruby_version")
+        purge_bundler_cache
+        # fix bug introduced in v38
+      elsif !@metadata.exists?(buildpack_version_cache) && @metadata.exists?(ruby_version_cache)
+        puts "Broken cache detected. Purging build cache."
+        purge_bundler_cache
+      elsif cache.exists?(bundler_cache) && @metadata.exists?(ruby_version_cache) && full_ruby_version != @metadata.read(ruby_version_cache).chomp
+        puts "Ruby version change detected. Clearing bundler cache."
+        puts "Old: #{@metadata.read(ruby_version_cache).chomp}"
+        puts "New: #{full_ruby_version}"
+        purge_bundler_cache
+      end
 
-    # fix git gemspec bug from Bundler 1.3.0+ upgrade
-    if File.exists?(bundler_cache) && !@metadata.exists?(bundler_version_cache) && !run("find vendor/bundle/*/*/bundler/gems/*/ -name *.gemspec").include?("No such file or directory")
-      puts "Old bundler cache detected. Clearing bundler cache."
-      purge_bundler_cache
-    end
+      # fix git gemspec bug from Bundler 1.3.0+ upgrade
+      if File.exists?(bundler_cache) && !@metadata.exists?(bundler_version_cache) && !run("find vendor/bundle/*/*/bundler/gems/*/ -name *.gemspec").include?("No such file or directory")
+        puts "Old bundler cache detected. Clearing bundler cache."
+        purge_bundler_cache
+      end
 
-    # fix for https://github.com/heroku/heroku-buildpack-ruby/issues/86
-    if (!@metadata.exists?(rubygems_version_cache) ||
+      # fix for https://github.com/heroku/heroku-buildpack-ruby/issues/86
+      if (!@metadata.exists?(rubygems_version_cache) ||
           (old_rubygems_version == "2.0.0" && old_rubygems_version != rubygems_version)) &&
-        @metadata.exists?(ruby_version_cache) && @metadata.read(ruby_version_cache).chomp.include?("ruby 2.0.0p0")
-      puts "Updating to rubygems #{rubygems_version}. Clearing bundler cache."
-      purge_bundler_cache
-    end
+          @metadata.exists?(ruby_version_cache) && @metadata.read(ruby_version_cache).chomp.include?("ruby 2.0.0p0")
+        puts "Updating to rubygems #{rubygems_version}. Clearing bundler cache."
+        purge_bundler_cache
+      end
 
-    FileUtils.mkdir_p(heroku_metadata)
-    @metadata.write(ruby_version_cache, full_ruby_version, false)
-    @metadata.write(buildpack_version_cache, BUILDPACK_VERSION, false)
-    @metadata.write(bundler_version_cache, BUNDLER_VERSION, false)
-    @metadata.write(rubygems_version_cache, rubygems_version, false)
-    @metadata.save
+      FileUtils.mkdir_p(heroku_metadata)
+      @metadata.write(ruby_version_cache, full_ruby_version, false)
+      @metadata.write(buildpack_version_cache, BUILDPACK_VERSION, false)
+      @metadata.write(bundler_version_cache, BUNDLER_VERSION, false)
+      @metadata.write(rubygems_version_cache, rubygems_version, false)
+      @metadata.save
+    end
   end
 
   def purge_bundler_cache
-    FileUtils.rm_rf(bundler_cache)
-    cache.clear bundler_cache
-    # need to reinstall language pack gems
-    install_language_pack_gems
+    Skylight.instrument "ruby.purge_bundler_cache" do
+      FileUtils.rm_rf(bundler_cache)
+      cache.clear bundler_cache
+      # need to reinstall language pack gems
+      install_language_pack_gems
+    end
   end
 end
