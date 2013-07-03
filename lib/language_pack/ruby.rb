@@ -23,12 +23,16 @@ class LanguagePack::Ruby < LanguagePack::Base
   # detects if this is a valid Ruby app
   # @return [Boolean] true if it's a Ruby app
   def self.use?
-    File.exist?("Gemfile")
+    Skylight.instrument "ruby.use?" do
+      File.exist?("Gemfile")
+    end
   end
 
   def self.gem_version(name)
-    if gem = bundle.specs.detect {|g| g.name == name }
-      gem.version
+    Skylight.instrument "ruby.gem_version" do
+      if gem = bundle.specs.detect {|g| g.name == name }
+        gem.version
+      end
     end
   end
 
@@ -41,24 +45,28 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
   def default_config_vars
-    vars = {
-      "LANG"     => "en_US.UTF-8",
-      "PATH"     => default_path,
-      "GEM_PATH" => slug_vendor_base,
-    }
+    Skylight.instrument "ruby.default_config_vars" do
+      vars = {
+        "LANG"     => "en_US.UTF-8",
+        "PATH"     => default_path,
+        "GEM_PATH" => slug_vendor_base,
+      }
 
-    ruby_version_jruby? ? vars.merge({
-      "JAVA_OPTS" => default_java_opts,
-      "JRUBY_OPTS" => default_jruby_opts,
-      "JAVA_TOOL_OPTIONS" => default_java_tool_options
-    }) : vars
+      ruby_version_jruby? ? vars.merge({
+        "JAVA_OPTS" => default_java_opts,
+        "JRUBY_OPTS" => default_jruby_opts,
+        "JAVA_TOOL_OPTIONS" => default_java_tool_options
+      }) : vars
+    end
   end
 
   def default_process_types
-    {
-      "rake"    => "bundle exec rake",
-      "console" => "bundle exec irb"
-    }
+    Skylight.instrument "ruby.default_process_types" do
+      {
+        "rake"    => "bundle exec rake",
+        "console" => "bundle exec irb"
+      }
+    end
   end
 
   def compile
