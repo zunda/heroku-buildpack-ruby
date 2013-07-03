@@ -390,9 +390,11 @@ WARNING
   # install libyaml into the LP to be referenced for psych compilation
   # @param [String] tmpdir to store the libyaml files
   def install_libyaml(dir)
-    FileUtils.mkdir_p dir
-    Dir.chdir(dir) do |dir|
-      run("curl #{VENDOR_URL}/#{LIBYAML_PATH}.tgz -s -o - | tar xzf -")
+    Skylight.instrument 'ruby.install_libyaml' do
+      FileUtils.mkdir_p dir
+      Dir.chdir(dir) do |dir|
+        run("curl #{VENDOR_URL}/#{LIBYAML_PATH}.tgz -s -o - | tar xzf -")
+      end
     end
   end
 
