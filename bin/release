@@ -1,17 +1,13 @@
 #!/usr/bin/env ruby
 
-require 'bundler/setup'
-require 'skylight'
 $:.unshift File.expand_path("../../lib", __FILE__)
 require "language_pack"
+require "language_pack/skylight"
 
-config = Skylight::Config.load(File.join(File.dirname(__FILE__), "../config/skylight.yml"))
-Skylight::Instrumenter.start!(config)
-
-Skylight.trace 'release', 'app.release' do
-  if pack = LanguagePack.detect(ARGV[0], ARGV[1])
-    puts pack.release
+skylight do
+  Skylight.trace 'release', 'app.release' do
+    if pack = LanguagePack.detect(ARGV[0], ARGV[1])
+      puts pack.release
+    end
   end
 end
-
-Skylight::Instrumenter.stop!

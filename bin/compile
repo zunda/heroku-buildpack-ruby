@@ -3,20 +3,16 @@
 # sync output
 $stdout.sync = true
 
-require 'bundler/setup'
-require 'skylight'
 $:.unshift File.expand_path("../../lib", __FILE__)
 require "language_pack"
+require "language_pack/skylight"
 
-config = Skylight::Config.load(File.join(File.dirname(__FILE__), "../config/skylight.yml"))
-Skylight::Instrumenter.start!(config)
-
-Skylight.trace 'compile', 'app.compile' do
-  if pack = LanguagePack.detect(ARGV[0], ARGV[1])
-    pack.log("compile") do
-      pack.compile
+skylight do
+  Skylight.trace 'compile', 'app.compile' do
+    if pack = LanguagePack.detect(ARGV[0], ARGV[1])
+      pack.log("compile") do
+        pack.compile
+      end
     end
   end
 end
-
-Skylight::Instrumenter.stop!
