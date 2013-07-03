@@ -1,4 +1,5 @@
 def skylight
+  ENV['SK_ENABLE_TRACE_LOGS'] = 'true'
   vendor_folder = File.expand_path("../../../vendor/skylight/gems/", __FILE__)
   Dir["#{vendor_folder}/*"].each {|dir| $:.unshift "#{dir}/lib" }
   require 'skylight'
