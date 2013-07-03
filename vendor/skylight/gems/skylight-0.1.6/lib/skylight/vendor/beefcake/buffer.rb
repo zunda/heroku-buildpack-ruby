@@ -80,7 +80,7 @@ module Skylight
 
       BINARY = 'BINARY'
 
-      if defined?(JRUBY_VERSION)
+      if defined?(JRUBY_VERSION) || (RUBY_PATCHLEVEL == 290 && RUBY_VERSION == "1.9.2")
         def <<(bytes)
           buf.force_encoding(BINARY)
           buf << bytes
