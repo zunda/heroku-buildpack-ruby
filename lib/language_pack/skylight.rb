@@ -2,7 +2,7 @@ require 'benchmark'
 require 'language_pack/shell_helpers'
 
 module Skylight
-  def bench_msg(message)
+  def self.bench_msg(message)
     Kernel.puts "=> #{message}"
     $stdout.flush
   end
