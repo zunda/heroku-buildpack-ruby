@@ -1,7 +1,22 @@
 require 'benchmark'
+require 'net/http'
 require 'language_pack/shell_helpers'
 
 module Skylight
+  def self.bench_http(message, level = 0, start_time, end_time, duration, request_id)
+    msg = Kello::BuildpackMessage.new(
+      start:      start_time,
+      end:        end_time,
+      name:       message,
+      duration:   duration,
+      depth:      level,
+      request_id: request_id
+    )
+    Net::HTTP.start('http://kello.herokuapp.com/time_entry', 80) do |http|
+      http.request_post('/post', msg.encode.to_s, {'Content-Type' => 'application/x-protobuf'} )
+    end
+  end
+
   def self.bench_msg(message, level = 0, start_time, end_time, duration, request_id)
     Kernel.puts "#{'==' * level}> name=#{message}, start=#{start_time}, end=#{start_time}, duration=#{duration}, level=#{level}, request_id=#{request_id}"
     $stdout.flush
@@ -16,7 +31,7 @@ module Skylight
       end
     end
     end_time   = Time.now.to_f
-    bench_msg(cat, block_depth, start_time, end_time, duration, request_id)
+    bench_http(cat, block_depth, start_time, end_time, duration, request_id)
 
     ret
   end
