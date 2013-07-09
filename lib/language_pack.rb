@@ -21,7 +21,7 @@ module LanguagePack
 end
 
 
-$:.unshift File.expand_path("../../vendor", __FILE__)
+$:.unshift(VENDOR_PATH = File.expand_path("../../vendor", __FILE__))
 
 require 'dotenv'
 require 'instrument'

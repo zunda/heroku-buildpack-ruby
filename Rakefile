@@ -101,6 +101,15 @@ task "gem:install", :gem, :version do |t, args|
   install_gem(gem, version)
 end
 
+task "bundler:vendor", :version do |t, args|
+  command = "gem install bundler #{args[:version] ? '--version #{args[:version]}' : ''}"
+  puts "Running: #{command}"
+  `#{command}`
+  bundler_dir = File.expand_path("../..", `gem which bundler`)
+  puts "Vendoring #{bundler_dir}"
+  `cp -r #{bundler_dir} ./vendor/gems/bundler`
+end
+
 desc "install libyaml"
 task "libyaml:install", :version do |t, args|
   version = args[:version]
