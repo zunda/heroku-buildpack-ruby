@@ -38,7 +38,7 @@ class LanguagePack::Ruby < LanguagePack::Base
 
   def initialize(build_path, cache_path=nil)
     super(build_path, cache_path)
-    @fetchers[:jvm] = JVM_BASE_URL
+    @fetchers[:jvm] = LanguagePack::Fetcher.new(JVM_BASE_URL)
   end
 
   def name
