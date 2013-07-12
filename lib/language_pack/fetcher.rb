@@ -11,11 +11,11 @@ module LanguagePack
     end
 
     def fetch(path)
-      run("curl -O #{@host_url}/#{path}")
+      run("curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 --max-time 20 --silent -O #{@host_url}/#{path}")
     end
 
     def fetch_untar(path)
-      run("curl #{@host_url}/#{path} -s -o - | tar zxf -")
+      run("set -o pipefail; curl --fail --retry 3 --retry-delay 1 --connect-timeout 3 --max-time 20 --silent #{@host_url}/#{path} -s -o - | tar zxf -")
     end
 
     private
