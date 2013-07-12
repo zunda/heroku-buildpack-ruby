@@ -63,35 +63,34 @@ WARNING
       log("assets_precompile") do
         setup_database_url_env
 
-        if rake_task_defined?("assets:precompile")
-          topic("Preparing app for Rails asset pipeline")
-          if Dir.glob('public/assets/manifest-*.json').any?
-            puts "Detected manifest file, assuming assets were compiled locally"
-          else
-            ENV["RAILS_GROUPS"] ||= "assets"
-            ENV["RAILS_ENV"]    ||= "production"
-
-            @cache.load public_assets_folder
-
-            puts "Running: rake assets:precompile"
-            require 'benchmark'
-            time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1 > /dev/null") }
-
-            if $?.success?
-              log "assets_precompile", :status => "success"
-              puts "Asset precompilation completed (#{"%.2f" % time}s)"
-
-              puts "Cleaning assets"
-              pipe "env PATH=$PATH:bin bundle exec rake assets:clean 2>& 1"
-
-              @cache.store public_assets_folder
-            else
-              log "assets_precompile", :status => "failure"
-              error "Precompiling assets failed."
-            end
-          end
+        topic("Preparing app for Rails asset pipeline")
+        if Dir.glob('public/assets/manifest-*.json').any?
+          puts "Detected manifest file, assuming assets were compiled locally"
         else
-          puts "Error detecting the assets:precompile task"
+          ENV["RAILS_GROUPS"] ||= "assets"
+          ENV["RAILS_ENV"]    ||= "production"
+
+          @cache.load public_assets_folder
+
+          puts "Running: rake assets:precompile"
+          status, time, precompile_output = run_rake_task("assets:precompile")
+
+          if status == :success
+            log "assets_precompile", :status => "success"
+            puts "Asset precompilation completed (#{"%.2f" % time}s)"
+
+            puts "Cleaning assets"
+            _, _, clean_output = run_rake_task("assets:clean")
+            puts clean_output
+
+            @cache.store public_assets_folder
+          elsif status == :failed
+            log "assets_precompile", :status => "failure"
+            puts precompile_output
+            error "Precompiling assets failed."
+          else
+            puts "Error detecting the assets:precompile task"
+          end
         end
       end
     end

@@ -1,5 +1,6 @@
 require "tmpdir"
 require "rubygems"
+require 'benchmark'
 require "language_pack"
 require "language_pack/base"
 require "language_pack/bundler_lockfile"
@@ -628,15 +629,6 @@ params = CGI.parse(uri.query || "")
     bundle.specs.map(&:name).include?(gem)
   end
 
-  # detects if a rake task is defined in the app
-  # @param [String] the task in question
-  # @return [Boolean] true if the rake task is defined in the app
-  def rake_task_defined?(task)
-    instrument "ruby.rake_task_defined" do
-      run("env PATH=$PATH bundle exec rake #{task} --dry-run") && $?.success?
-    end
-  end
-
   # executes the block with GIT_DIR environment variable removed since it can mess with the current working directory git thinks it's in
   # @param [block] block to be executed in the GIT_DIR free context
   def allow_git(&blk)
@@ -658,16 +650,34 @@ params = CGI.parse(uri.query || "")
     gem_is_bundled?('execjs') ? [NODE_JS_BINARY_PATH] : []
   end
 
+  def run_rake_task(task)
+    output = ""
+    time = Benchmark.realtime { output = run_stdout("env PATH=$PATH:bin bundle exec rake #{task} 2>&1") }
+    if $?.success?
+      [:success, time, output]
+    else
+      errors = ["rake is not part of the bundle",
+                "No Rakefile found",
+                "Don't know how to build task"
+      ]
+      if errors.none? {|error| output.include?(error) }
+        [:failed, time, output]
+      else
+        [:not_found, time, output]
+      end
+    end
+  end
+
   def run_assets_precompile_rake_task
     instrument 'ruby.run_assets_precompile_rake_task' do
-      if rake_task_defined?("assets:precompile")
-        require 'benchmark'
 
-        topic "Running: rake assets:precompile"
-        time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
-        if $?.success?
-          puts "Asset precompilation completed (#{"%.2f" % time}s)"
-        end
+      topic "Running: rake assets:precompile"
+      status, time, output = run_rake_task("assets:precompile")
+      if status == :success
+        puts output
+        puts "Asset precompilation completed (#{"%.2f" % time}s)"
+      elsif status == :failed
+        puts output
       end
     end
   end
