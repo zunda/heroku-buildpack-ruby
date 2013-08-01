@@ -11,10 +11,11 @@ module LanguagePack
     attr_reader :set
 
     def initialize(bundler_path, app = {})
-      @version      = ""
-      @app          = app
-      @bundler_path = bundler_path
-      @set          = nil
+      @version       = ""
+      @version_wo_pl = ""
+      @app           = app
+      @bundler_path  = bundler_path
+      @set           = nil
     end
 
     def gemfile
@@ -66,6 +67,10 @@ module LanguagePack
           @version = bundler_output.sub('(', '').sub(')', '').split.join('-')
         end
       end
+    end
+
+    def version_without_patchlevel
+      @version_wo_pl = @version.sub(/-p[\d]+/, '')
     end
   end
 end

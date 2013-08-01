@@ -125,7 +125,8 @@ private
   # the relative path to the vendored ruby directory
   # @return [String] resulting path
   def slug_vendor_ruby
-    "vendor/#{ruby_version}"
+    ruby_version
+    "vendor/#{@ruby_version.version_without_patchlevel}"
   end
 
   # the relative path to the vendored jvm
@@ -137,7 +138,8 @@ private
   # the absolute path of the build ruby to use during the buildpack
   # @return [String] resulting path
   def build_ruby_path
-    "/tmp/#{ruby_version}"
+    ruby_version
+    "/tmp/#{@ruby_version.version_without_patchlevel}"
   end
 
   def ruby_version_file
