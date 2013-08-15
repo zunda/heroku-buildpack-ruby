@@ -151,13 +151,14 @@ private
   def ruby_version
     instrument 'ruby.ruby_version' do
       return @ruby_version.version if @ruby_version
-      new_app        = !File.exist?("vendor/heroku")
-      legacy_file    = "buildpack_ruby_version"
-      legacy_version = @metadata.read(legacy_file).chomp if @metadata.exists?(legacy_file)
+      new_app           = !File.exist?("vendor/heroku")
+      last_version_file = "buildpack_ruby_version"
+      last_version      = nil
+      last_version      = @metadata.read(last_version_file).chomp if @metadata.exists?(last_version_file)
 
       @ruby_version = LanguagePack::RubyVersion.new(bundler_path, {
         new: new_app,
-        legacy_version: legacy_version})
+        last_version: last_version})
       @ruby_version.version
     end
   end
