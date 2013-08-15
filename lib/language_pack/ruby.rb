@@ -157,7 +157,7 @@ private
 
       @ruby_version = LanguagePack::RubyVersion.new(bundler_path, {
         new: new_app,
-        leagcy_version: legacy_version})
+        legacy_version: legacy_version})
       @ruby_version.version
     end
   end
