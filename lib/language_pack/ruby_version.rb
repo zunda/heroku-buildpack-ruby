@@ -8,17 +8,37 @@ module LanguagePack
     DEFAULT_VERSION = "ruby-2.0.0"
     LEGACY_VERSION  = "ruby-1.9.2"
 
-    attr_reader :set, :version_without_patchlevel, :engine, :ruby_version, :engine_version
+    attr_reader :set, :version, :version_without_patchlevel, :engine, :ruby_version, :engine_version
 
     def initialize(bundler_path, app = {})
       @set          = nil
       @bundler_path = bundler_path
       @app          = app
-      version
+      set_version
+      parse_version
 
       @version_without_patchlevel = @version.sub(/-p[\d]+/, '')
     end
 
+    # determine if we're using jruby
+    # @return [Boolean] true if we are and false if we aren't
+    def jruby?
+      engine == :jruby
+    end
+
+    # determine if we're using rbx
+    # @return [Boolean] true if we are and false if we aren't
+    def rbx?
+      engine == :rbx
+    end
+
+    # determines if a build ruby is required
+    # @return [Boolean] true if a build ruby is required
+    def build?
+      engine == :ruby && %w(1.8.7 1.9.2).include?(ruby_version)
+    end
+
+    private
     def gemfile
       old_system_path = "/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
       run_stdout("env PATH=#{@bundler_path}/bin:#{old_system_path} GEM_PATH=#{@bundler_path} bundle platform --ruby").chomp
@@ -47,9 +67,7 @@ module LanguagePack
       end
     end
 
-    def version
-      return @version if @version
-
+    def set_version
       if File.exists?(DOT_RV_FILE)
         @set     = :ruby_version
         @version = ruby_version_file
@@ -70,7 +88,7 @@ module LanguagePack
       end
     end
 
-    def set_attrs
+    def parse_version
       _, @ruby_version, @engine, *@engine_version = version.split('-')
       @engine_version = @engine_version.join('-')
 
@@ -78,24 +96,6 @@ module LanguagePack
         @engine         = :ruby
         @engine_version = @ruby_version
       end
-    end
-
-    # determine if we're using jruby
-    # @return [Boolean] true if we are and false if we aren't
-    def jruby?
-      engine == :jruby
-    end
-
-    # determine if we're using rbx
-    # @return [Boolean] true if we are and false if we aren't
-    def rbx?
-      engine == :rbx
-    end
-
-    # determines if a build ruby is required
-    # @return [Boolean] true if a build ruby is required
-    def build?
-      engine == :ruby && %w(1.8.7 1.9.2).include?(ruby_version)
     end
   end
 end
