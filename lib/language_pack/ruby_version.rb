@@ -8,7 +8,7 @@ module LanguagePack
     DEFAULT_VERSION = "ruby-2.0.0"
     LEGACY_VERSION  = "ruby-1.9.2"
 
-    attr_reader :set, :version_without_patchlevel, :engine
+    attr_reader :set, :version_without_patchlevel, :engine, :ruby_version, :engine_version
 
     def initialize(bundler_path, app = {})
       @set          = nil
@@ -17,7 +17,6 @@ module LanguagePack
       version
 
       @version_without_patchlevel = @version.sub(/-p[\d]+/, '')
-      @engine                     = engine
     end
 
     def gemfile
@@ -71,14 +70,13 @@ module LanguagePack
       end
     end
 
-    def engine
-      return @engine unless @engine
-      if version.match(/-jruby-/)
-        :jruby
-      elsif version.match(/-rbx-/)
-        :rbx
-      else
-        :ruby
+    def set_attrs
+      _, @ruby_version, @engine, *@engine_version = version.split('-')
+      @engine_version = @engine_version.join('-')
+
+      if @engine.nil?
+        @engine         = :ruby
+        @engine_version = @ruby_version
       end
     end
 
@@ -92,6 +90,12 @@ module LanguagePack
     # @return [Boolean] true if we are and false if we aren't
     def rbx?
       engine == :rbx
+    end
+
+    # determines if a build ruby is required
+    # @return [Boolean] true if a build ruby is required
+    def build?
+      engine == :ruby && %w(1.8.7 1.9.2).include?(ruby_version)
     end
   end
 end

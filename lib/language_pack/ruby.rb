@@ -114,7 +114,7 @@ private
     instrument 'ruby.slug_vendor_base' do
       if @slug_vendor_base
         @slug_vendor_base
-      elsif ruby_version.version.match(/^ruby-1\.8\.7/)
+      elsif ruby_version.ruby_version == "1.8.7"
         @slug_vendor_base = "vendor/bundle/1.8"
       else
         @slug_vendor_base = run(%q(ruby -e "require 'rbconfig';puts \"vendor/bundle/#{RUBY_ENGINE}/#{RbConfig::CONFIG['ruby_version']}\"")).chomp
@@ -218,12 +218,6 @@ private
     end
   end
 
-  # determines if a build ruby is required
-  # @return [Boolean] true if a build ruby is required
-  def build_ruby?
-    @build_ruby ||= ruby_version.version.match(/^ruby-(1\.8\.7|1\.9\.2)/)
-  end
-
   # install the vendored ruby
   # @return [Boolean] true if it installs the vendored ruby and false otherwise
   def install_ruby
@@ -235,7 +229,7 @@ Invalid RUBY_VERSION specified: #{ruby_version.version}
 Valid versions: #{ruby_versions.join(", ")}
 ERROR
 
-      if build_ruby?
+      if ruby_version.build?
         FileUtils.mkdir_p(build_ruby_path)
         Dir.chdir(build_ruby_path) do
           ruby_vm = "ruby"
@@ -344,7 +338,7 @@ WARNING
   # @return [String] resulting path or empty string if ruby is not vendored
   def ruby_install_binstub_path
     @ruby_install_binstub_path ||=
-      if build_ruby?
+      if ruby_version.build?
         "#{build_ruby_path}/bin"
       elsif ruby_version
         "#{slug_vendor_ruby}/bin"
@@ -490,7 +484,7 @@ WARNING
           # we need to set BUNDLE_CONFIG and BUNDLE_GEMFILE for
           # codon since it uses bundler.
           env_vars       = "env BUNDLE_GEMFILE=#{pwd}/Gemfile BUNDLE_CONFIG=#{pwd}/.bundle/config CPATH=#{yaml_include}:$CPATH CPPATH=#{yaml_include}:$CPPATH LIBRARY_PATH=#{yaml_lib}:$LIBRARY_PATH RUBYOPT=\"#{syck_hack}\" NOKOGIRI_USE_SYSTEM_LIBRARIES=true"
-          env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.version.match(/^ruby-1\.8\.7/)
+          env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version.ruby_version == "1.8.7"
           puts "Running: #{bundle_command}"
           instrument "ruby.bundle_install" do
             bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
