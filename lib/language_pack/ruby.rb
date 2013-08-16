@@ -64,7 +64,7 @@ class LanguagePack::Ruby < LanguagePack::Base
         "GEM_PATH" => slug_vendor_base,
       }
 
-      ruby_version_jruby? ? vars.merge({
+      @ruby_version.jruby? ? vars.merge({
         "JAVA_OPTS" => default_java_opts,
         "JRUBY_OPTS" => default_jruby_opts,
         "JAVA_TOOL_OPTIONS" => default_java_tool_options
@@ -163,18 +163,6 @@ private
     end
   end
 
-  # determine if we're using rbx
-  # @return [Boolean] true if we are and false if we aren't
-  def ruby_version_rbx?
-    ruby_version ? ruby_version.match(/rbx-/) : false
-  end
-
-  # determine if we're using jruby
-  # @return [Boolean] true if we are and false if we aren't
-  def ruby_version_jruby?
-    @ruby_version_jruby ||= ruby_version ? ruby_version.match(/jruby-/) : false
-  end
-
   # default JAVA_OPTS
   # return [String] string of JAVA_OPTS
   def default_java_opts
@@ -229,7 +217,7 @@ private
       set_env_default  "LANG",     "en_US.UTF-8"
       set_env_override "PATH",     "$HOME/bin:$HOME/#{slug_vendor_base}/bin:$PATH"
 
-      if ruby_version_jruby?
+      if @ruby_version.jruby?
         set_env_default "JAVA_OPTS", default_java_opts
         set_env_default "JRUBY_OPTS", default_jruby_opts
         set_env_default "JAVA_TOOL_OPTIONS", default_java_tool_options
@@ -268,7 +256,7 @@ ERROR
       FileUtils.mkdir_p(slug_vendor_ruby)
       Dir.chdir(slug_vendor_ruby) do
         instrument "ruby.fetch_ruby" do
-          if ruby_version_rbx?
+          if @ruby_version.rbx?
             file     = "#{ruby_version}.tar.bz2"
             sha_file = "#{file}.sha1"
             @fetchers[:rbx].fetch(file)
@@ -342,7 +330,7 @@ WARNING
   # vendors JVM into the slug for JRuby
   def install_jvm
     instrument 'ruby.install_jvm' do
-      if ruby_version_jruby?
+      if @ruby_version.jruby?
         topic "Installing JVM: #{JVM_VERSION}"
 
         FileUtils.mkdir_p(slug_vendor_jvm)
@@ -377,7 +365,7 @@ WARNING
     instrument 'ruby.setup_ruby_install_env' do
       ENV["PATH"] = "#{ruby_install_binstub_path}:#{ENV["PATH"]}"
 
-      if ruby_version_jruby?
+      if @ruby_version.jruby?
         ENV['JAVA_OPTS']  = default_java_opts
       end
     end
