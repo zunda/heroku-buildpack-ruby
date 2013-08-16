@@ -46,6 +46,7 @@ describe "Ruby Versions" do
       expect(app.output).to match("ruby-1.9.3-jruby-1.7.3")
       expect(app.output).not_to include("OpenJDK 64-Bit Server VM warning")
       expect(app.run('ruby -v')).to match("jruby 1.7.3")
+    end
   end
 
   it "should use a .ruby-version file specifying ruby 2.0.0p195" do
