@@ -38,6 +38,16 @@ module LanguagePack
       engine == :ruby && %w(1.8.7 1.9.2).include?(ruby_version)
     end
 
+    # convert to a Gemfile ruby DSL incantation
+    # @return [String] the string representation of the Gemfile ruby DSL
+    def to_gemfile
+      if @engine == :ruby
+        "ruby '#{ruby_version}'"
+      else
+        "ruby '#{ruby_version}', :engine => '#{engine}', :engine_version => '#{engine_version}'"
+      end
+    end
+
     private
     def gemfile
       old_system_path = "/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
