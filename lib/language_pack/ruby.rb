@@ -64,7 +64,7 @@ class LanguagePack::Ruby < LanguagePack::Base
         "GEM_PATH" => slug_vendor_base,
       }
 
-      @ruby_version.jruby? ? vars.merge({
+      ruby_version.jruby? ? vars.merge({
         "JAVA_OPTS" => default_java_opts,
         "JRUBY_OPTS" => default_jruby_opts,
         "JAVA_TOOL_OPTIONS" => default_java_tool_options
@@ -114,7 +114,7 @@ private
     instrument 'ruby.slug_vendor_base' do
       if @slug_vendor_base
         @slug_vendor_base
-      elsif ruby_version.match(/^ruby-1\.8\.7/)
+      elsif ruby_version.version.match(/^ruby-1\.8\.7/)
         @slug_vendor_base = "vendor/bundle/1.8"
       else
         @slug_vendor_base = run(%q(ruby -e "require 'rbconfig';puts \"vendor/bundle/#{RUBY_ENGINE}/#{RbConfig::CONFIG['ruby_version']}\"")).chomp
@@ -125,8 +125,7 @@ private
   # the relative path to the vendored ruby directory
   # @return [String] resulting path
   def slug_vendor_ruby
-    ruby_version
-    "vendor/#{@ruby_version.version_without_patchlevel}"
+    "vendor/#{ruby_version.version_without_patchlevel}"
   end
 
   # the relative path to the vendored jvm
@@ -138,19 +137,14 @@ private
   # the absolute path of the build ruby to use during the buildpack
   # @return [String] resulting path
   def build_ruby_path
-    ruby_version
-    "/tmp/#{@ruby_version.version_without_patchlevel}"
-  end
-
-  def ruby_version_file
-    ".ruby-version"
+    "/tmp/#{ruby_version.version_without_patchlevel}"
   end
 
   # fetch the ruby version from bundler
   # @return [String, nil] returns the ruby version if detected or nil if none is detected
   def ruby_version
     instrument 'ruby.ruby_version' do
-      return @ruby_version.version if @ruby_version
+      return @ruby_version if @ruby_version
       new_app           = !File.exist?("vendor/heroku")
       last_version_file = "buildpack_ruby_version"
       last_version      = nil
@@ -159,7 +153,6 @@ private
       @ruby_version = LanguagePack::RubyVersion.new(bundler_path, {
         new: new_app,
         last_version: last_version})
-      @ruby_version.version
     end
   end
 
@@ -217,7 +210,7 @@ private
       set_env_default  "LANG",     "en_US.UTF-8"
       set_env_override "PATH",     "$HOME/bin:$HOME/#{slug_vendor_base}/bin:$PATH"
 
-      if @ruby_version.jruby?
+      if ruby_version.jruby?
         set_env_default "JAVA_OPTS", default_java_opts
         set_env_default "JRUBY_OPTS", default_jruby_opts
         set_env_default "JAVA_TOOL_OPTIONS", default_java_tool_options
@@ -228,7 +221,7 @@ private
   # determines if a build ruby is required
   # @return [Boolean] true if a build ruby is required
   def build_ruby?
-    @build_ruby ||= ruby_version.match(/^ruby-(1\.8\.7|1\.9\.2)/)
+    @build_ruby ||= ruby_version.version.match(/^ruby-(1\.8\.7|1\.9\.2)/)
   end
 
   # install the vendored ruby
@@ -238,7 +231,7 @@ private
       return false unless ruby_version
 
       invalid_ruby_version_message = <<ERROR
-Invalid RUBY_VERSION specified: #{ruby_version}
+Invalid RUBY_VERSION specified: #{ruby_version.version}
 Valid versions: #{ruby_versions.join(", ")}
 ERROR
 
@@ -247,7 +240,7 @@ ERROR
         Dir.chdir(build_ruby_path) do
           ruby_vm = "ruby"
           instrument "ruby.fetch_build_ruby" do
-            @fetchers[:buildpack].fetch_untar("#{ruby_version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz")
+            @fetchers[:buildpack].fetch_untar("#{ruby_version.version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz")
           end
         end
         error invalid_ruby_version_message unless $?.success?
@@ -256,8 +249,8 @@ ERROR
       FileUtils.mkdir_p(slug_vendor_ruby)
       Dir.chdir(slug_vendor_ruby) do
         instrument "ruby.fetch_ruby" do
-          if @ruby_version.rbx?
-            file     = "#{ruby_version}.tar.bz2"
+          if ruby_version.rbx?
+            file     = "#{ruby_version.version}.tar.bz2"
             sha_file = "#{file}.sha1"
             @fetchers[:rbx].fetch(file)
             @fetchers[:rbx].fetch(sha_file)
@@ -277,7 +270,7 @@ ERROR_MSG
             FileUtils.rm(file)
             FileUtils.rm(sha_file)
           else
-            @fetchers[:buildpack].fetch_untar("#{ruby_version}.tgz")
+            @fetchers[:buildpack].fetch_untar("#{ruby_version.version}.tgz")
           end
         end
       end
@@ -289,11 +282,11 @@ ERROR_MSG
         run("ln -s ../#{bin} #{bin_dir}")
       end
 
-      @metadata.write("buildpack_ruby_version", ruby_version)
+      @metadata.write("buildpack_ruby_version", ruby_version.version)
 
-      if !(@ruby_version.set == :env_var)
-        topic "Using Ruby version: #{ruby_version}"
-        if !@ruby_version.set
+      if !(ruby_version.set == :env_var)
+        topic "Using Ruby version: #{ruby_version.version}"
+        if !ruby_version.set
           warn(<<WARNING)
 You have not declared a Ruby version in your Gemfile.
 To set your Ruby version add this line to your Gemfile:
@@ -303,7 +296,7 @@ WARNING
         end
       else
         warn(<<WARNING)
-Using RUBY_VERSION: #{ruby_version}
+Using RUBY_VERSION: #{ruby_version.version}
 RUBY_VERSION support has been deprecated and will be removed entirely on August 1, 2012.
 See https://devcenter.heroku.com/articles/ruby-versions#selecting_a_version_of_ruby for more information.
 WARNING
@@ -314,7 +307,7 @@ WARNING
   end
 
   def ruby_version_to_gemfile
-    parts = ruby_version.split('-')
+    parts = ruby_version.version.split('-')
     if parts.size > 2
       # not mri
       "ruby '#{parts[1]}', :engine => '#{parts[2]}', :engine_version => '#{parts.last}'"
@@ -330,7 +323,7 @@ WARNING
   # vendors JVM into the slug for JRuby
   def install_jvm
     instrument 'ruby.install_jvm' do
-      if @ruby_version.jruby?
+      if ruby_version.jruby?
         topic "Installing JVM: #{JVM_VERSION}"
 
         FileUtils.mkdir_p(slug_vendor_jvm)
@@ -365,7 +358,7 @@ WARNING
     instrument 'ruby.setup_ruby_install_env' do
       ENV["PATH"] = "#{ruby_install_binstub_path}:#{ENV["PATH"]}"
 
-      if @ruby_version.jruby?
+      if ruby_version.jruby?
         ENV['JAVA_OPTS']  = default_java_opts
       end
     end
@@ -497,7 +490,7 @@ WARNING
           # we need to set BUNDLE_CONFIG and BUNDLE_GEMFILE for
           # codon since it uses bundler.
           env_vars       = "env BUNDLE_GEMFILE=#{pwd}/Gemfile BUNDLE_CONFIG=#{pwd}/.bundle/config CPATH=#{yaml_include}:$CPATH CPPATH=#{yaml_include}:$CPPATH LIBRARY_PATH=#{yaml_lib}:$LIBRARY_PATH RUBYOPT=\"#{syck_hack}\" NOKOGIRI_USE_SYSTEM_LIBRARIES=true"
-          env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.match(/^ruby-1\.8\.7/)
+          env_vars      += " BUNDLER_LIB_PATH=#{bundler_path}" if ruby_version && ruby_version.version.match(/^ruby-1\.8\.7/)
           puts "Running: #{bundle_command}"
           instrument "ruby.bundle_install" do
             bundler_output << pipe("#{env_vars} #{bundle_command} --no-clean 2>&1")
