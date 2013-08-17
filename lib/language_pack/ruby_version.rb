@@ -8,7 +8,7 @@ module LanguagePack
     DEFAULT_VERSION = "ruby-2.0.0"
     LEGACY_VERSION  = "ruby-1.9.2"
 
-    attr_reader :set, :version, :version_without_patchlevel, :engine, :ruby_version, :engine_version
+    attr_reader :set, :version, :version_without_patchlevel, :patchlevel, :engine, :ruby_version, :engine_version
 
     def initialize(bundler_path, app = {})
       @set          = nil
@@ -99,12 +99,28 @@ module LanguagePack
     end
 
     def parse_version
-      _, @ruby_version, @engine, *@engine_version = version.split('-')
-      @engine_version = @engine_version.join('-')
+      regex = %r{
+        (?<ruby_version>\d+\.\d+\.\d+){0}
+        (?<patchlevel>p\d+){0}
+        (?<engine>\w+){0}
+        (?<engine_version>.+){0}
 
-      if @engine.nil?
-        @engine         = :ruby
-        @engine_version = @ruby_version
+        ruby-\g<ruby_version>(-\g<patchlevel>)?(-\g<engine>-\g<engine_version>)?
+      }x
+
+      md = regex.match(version)
+      if md
+        @ruby_version   = md[:ruby_version]
+        @patchlevel     = md[:patchlevel]
+        @engine         = md[:engine]
+        @engine_version = md[:engine_version]
+
+        if @engine.nil?
+          @engine         = :ruby
+          @engine_version = @ruby_version
+        end
+      else
+        raise "Can not parse Ruby Version: #{version}"
       end
     end
   end
