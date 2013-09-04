@@ -84,6 +84,7 @@ class LanguagePack::Base
         puts @deprecations.join("\n")
       end
     end
+    error "Don't finish"
   end
 
   # collection of values passed for a release
