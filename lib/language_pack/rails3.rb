@@ -3,6 +3,9 @@ require "language_pack/rails2"
 
 # Rails 3 Language Pack. This is for all Rails 3.x apps.
 class LanguagePack::Rails3 < LanguagePack::Rails2
+  ASSETS_CACHE_LIMIT      = 52428800 # bytes
+  CACHE_SPROCKETS_VERSION = "2.0.0.backport1"
+
   # detects if this is a Rails 3.x app
   # @return [Boolean] true if it's a Rails 3.x app
   def self.use?
@@ -36,6 +39,10 @@ class LanguagePack::Rails3 < LanguagePack::Rails2
     instrument "rails3.compile" do
       super
     end
+  end
+
+  def default_assets_cache
+    "tmp/cache/assets"
   end
 
 private
@@ -72,9 +79,16 @@ private
             require 'benchmark'
             time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
 
+            cache_asset_intermediates = LanguagePack::Ruby.gem_version('sprockets-rails') == CACHE_SPROCKETS_VERSION
+            @cache.load default_assets_cache if cache_asset_intermediates
+
             if $?.success?
               log "assets_precompile", :status => "success"
               puts "Asset precompilation completed (#{"%.2f" % time}s)"
+              if cache_asset_intermediates
+                cleanup_assets_cache
+                @cache.store default_assets_cache
+              end
             else
               log "assets_precompile", :status => "failure"
               deprecate <<-DEPRECATION
@@ -109,6 +123,12 @@ private
           end
         "#{scheme}://user:pass@127.0.0.1/dbname"
       end
+    end
+  end
+
+  def cleanup_assets_cache
+    instrument "rails3.cleanup_assets_cache" do
+      LanguagePack::Helpers::StaleFileCleaner.new(default_assets_cache).clean_over(ASSETS_CACHE_LIMIT)
     end
   end
 end
