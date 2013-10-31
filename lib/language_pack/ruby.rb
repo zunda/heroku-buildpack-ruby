@@ -684,13 +684,19 @@ params = CGI.parse(uri.query || "")
 
   def run_assets_precompile_rake_task
     instrument 'ruby.run_assets_precompile_rake_task' do
-      if rake_task_defined?("assets:precompile")
+      puts run("env PATH=$PATH bundle exec rake assets:precompile --dry-run")
+      unless rake_task_defined?("assets:precompile")
+        puts "rake task `assets:precompile` not detected, skipping."
+        return true
+      end
 
-        topic "Running: rake assets:precompile"
-        time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
-        if $?.success?
-          puts "Asset precompilation completed (#{"%.2f" % time}s)"
-        end
+      topic "Running: rake assets:precompile"
+      time = Benchmark.realtime { pipe("env PATH=$PATH:bin bundle exec rake assets:precompile 2>&1") }
+      if $?.success?
+        puts "Asset precompilation completed (#{"%.2f" % time}s)"
+      else
+        log "assets_precompile", :status => "failure"
+        error "Precompiling assets failed."
       end
     end
   end
