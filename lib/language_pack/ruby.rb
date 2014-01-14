@@ -470,10 +470,6 @@ WARNING
         bundle_command = "#{bundle_bin} install --without #{bundle_without} --path vendor/bundle --binstubs #{bundler_binstubs_path}"
         bundle_command << " -j4"
 
-        unless File.exist?("Gemfile.lock")
-          error "Gemfile.lock is required. Please run \"bundle install\" locally\nand commit your Gemfile.lock."
-        end
-
         if bundler.windows_gemfile_lock?
           warn(<<WARNING)
 Removing `Gemfile.lock` because it was generated on Windows.
