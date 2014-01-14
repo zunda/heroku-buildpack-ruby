@@ -1,7 +1,9 @@
 require "tmpdir"
 require "digest/md5"
+require "securerandom"
 require "benchmark"
 require "rubygems"
+
 require "language_pack"
 require "language_pack/base"
 require "language_pack/ruby_version"
@@ -81,14 +83,15 @@ class LanguagePack::Ruby < LanguagePack::Base
   def default_config_vars
     instrument "ruby.default_config_vars" do
       vars = {
-        "LANG"     => "en_US.UTF-8",
-        "PATH"     => default_path,
-        "GEM_PATH" => slug_vendor_base,
+        "LANG"            => "en_US.UTF-8",
+        "PATH"            => default_path,
+        "GEM_PATH"        => slug_vendor_base,
+        "SECRET_KEY_BASE" => SecureRandom.hex(16)
       }
 
       ruby_version.jruby? ? vars.merge({
-        "JAVA_OPTS" => default_java_opts,
-        "JRUBY_OPTS" => default_jruby_opts,
+        "JAVA_OPTS"         => default_java_opts,
+        "JRUBY_OPTS"        => default_jruby_opts,
         "JAVA_TOOL_OPTIONS" => default_java_tool_options
       }) : vars
     end
@@ -232,8 +235,9 @@ private
   # sets up the profile.d script for this buildpack
   def setup_profiled
     instrument 'setup_profiled' do
+      set_env_default  "LANG",            "en_US.UTF-8"
+      set_env_default  "SECRET_KEY_BASE", SecureRandom.hex(16)
       set_env_override "GEM_PATH", "$HOME/#{slug_vendor_base}:$GEM_PATH"
-      set_env_default  "LANG",     "en_US.UTF-8"
       set_env_override "PATH",     "$HOME/bin:$HOME/#{slug_vendor_base}/bin:$HOME/#{bundler_binstubs_path}:$PATH"
 
       if ruby_version.jruby?

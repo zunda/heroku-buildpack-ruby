@@ -6,6 +6,8 @@ describe "Rails 4.x" do
       add_database(app, heroku)
       expect(app.output).to include("Detected manifest file, assuming assets were compiled locally")
       expect(app.output).not_to match("Include 'rails_12factor' gem to enable all platform features")
+
+      expect(app.run('echo ${SECRET_KEY_BASE?"Needs SECRET_KEY_BASE"}')).to_not eq("Needs SECRET_KEY_BASE")
     end
   end
 
