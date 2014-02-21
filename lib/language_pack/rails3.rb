@@ -96,6 +96,7 @@ private
         "DATABASE_URL" => database_url
       }
     end
+    puts "DATABASE_URL: #{default_env["DATABASE_URL"]}"
     default_env.merge(user_env_hash)
   end
 

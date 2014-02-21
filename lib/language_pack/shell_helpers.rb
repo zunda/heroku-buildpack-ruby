@@ -85,6 +85,7 @@ module LanguagePack
       options[:env] ||= {}
       options[:env] = user_env_hash.merge(options[:env]) if options[:user_env]
       env = options[:env].map {|key, value| "#{key}=\"#{value}\""}.join(" ")
+      puts "env #{env} #{command} #{options[:out]}"
       IO.popen("env #{env} #{command} #{options[:out]}") do |io|
         until io.eof?
           buffer = io.gets

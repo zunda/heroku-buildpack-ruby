@@ -591,6 +591,7 @@ ERROR
 require 'cgi'
 require 'uri'
 
+puts ENV['DATABASE_URL']
 begin
   uri = URI.parse(ENV["DATABASE_URL"])
 rescue URI::InvalidURIError
