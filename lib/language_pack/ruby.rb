@@ -411,6 +411,7 @@ WARNING
     FileUtils.mkdir_p bin_dir
     Dir.chdir(bin_dir) do |dir|
       @fetchers[:buildpack].fetch_untar("#{name}.tgz")
+      puts "LS: #{run("ls *")}"
     end
   end
 
