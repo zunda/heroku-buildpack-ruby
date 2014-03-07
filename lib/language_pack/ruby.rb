@@ -31,7 +31,7 @@ class LanguagePack::Ruby < LanguagePack::Base
   end
 
   def self.bundler
-    @bundler ||= LanguagePack::Helpers::BundlerWrapper.new.install
+    @bundler ||= LanguagePack::Helpers::BundlerWrapper.new(gemfile_path: LanguagePack::ShellHelpers.env("BUNDLE_GEMFILE")).install
   end
 
   def bundler
@@ -509,8 +509,11 @@ WARNING
           bundler_path   = "#{pwd}/#{slug_vendor_base}/gems/#{BUNDLER_GEM_PATH}/lib"
           # we need to set BUNDLE_CONFIG and BUNDLE_GEMFILE for
           # codon since it uses bundler.
-          env_vars       = {
-            "BUNDLE_GEMFILE"                => "#{pwd}/Gemfile",
+          # BUNDLE_GEMFILE requires the full path
+          # during install when using binstubs
+          # https://github.com/bundler/bundler/issues/1131
+          env_vars = {
+            "BUNDLE_GEMFILE"                => "#{pwd}/#{ENV["BUNDLE_GEMFILE"] || "Gemfile"}",
             "BUNDLE_CONFIG"                 => "#{pwd}/.bundle/config",
             "CPATH"                         => noshellescape("#{yaml_include}:$CPATH"),
             "CPPATH"                        => noshellescape("#{yaml_include}:$CPPATH"),

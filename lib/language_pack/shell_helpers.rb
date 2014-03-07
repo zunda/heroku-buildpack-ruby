@@ -18,8 +18,12 @@ module LanguagePack
       @@user_env_hash
     end
 
-    def env(var)
+    def self.env(var)
       ENV[var] || user_env_hash[var]
+    end
+
+    def env(var)
+      ShellHelpers.env(var)
     end
 
     def self.blacklist?(key)
