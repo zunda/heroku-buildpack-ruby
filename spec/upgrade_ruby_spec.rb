@@ -5,7 +5,7 @@ describe "Upgrading ruby apps" do
     Hatchet::Runner.new("mri_200").deploy do |app|
       expect(app.run("ruby -v")).to match("2.0.0")
 
-      `echo "" > Gemfile; rm Gemfile.lock`
+      `echo "" > Gemfile; echo "" > Gemfile.lock`
       `env BUNDLE_GEMFILE=./Gemfile bundle install`
       `echo "ruby '2.1.0'" > Gemfile`
       `git add . ; git commit -m update-ruby`
