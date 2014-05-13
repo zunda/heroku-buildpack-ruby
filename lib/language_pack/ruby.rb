@@ -246,6 +246,9 @@ private
         set_env_default "JRUBY_OPTS", default_jruby_opts
         set_env_default "JAVA_TOOL_OPTIONS", default_java_tool_options
       end
+      File.open("#{build_path}/.profile.d/base.sh", "a") do | file|
+        file.puts "cd $HOME"
+      end
     end
   end
 
