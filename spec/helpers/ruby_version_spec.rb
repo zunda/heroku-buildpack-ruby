@@ -93,6 +93,15 @@ describe "RubyVersion" do
     end
   end
 
+  it "it only uses the ruby version string from the `bundle platform --ruby`" do
+    Hatchet::App.new("bundle_platform_garbage_output").in_directory do |dir|
+      ruby_version   = LanguagePack::RubyVersion.new(@bundler.install.ruby_version, is_new: true)
+      version_number = "2.1.2"
+      version        = "ruby-#{version_number}"
+      expect(ruby_version.version).to eq("ruby-2.1.2")
+    end
+  end
+
   it "surfaces error message from bundler"  do
     bundle_error_msg = "Zomg der was a problem in da gemfile"
     error_klass      = LanguagePack::Helpers::BundlerWrapper::GemfileParseError

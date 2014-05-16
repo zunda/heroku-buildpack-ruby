@@ -102,6 +102,14 @@ module LanguagePack
       @patchlevel     = md[:patchlevel]
       @engine_version = md[:engine_version] || @ruby_version
       @engine         = (md[:engine]        || :ruby).to_sym
+
+      version_elements = ["ruby-#{@ruby_version}"]
+      version_elements << "#{@patchlevel}" if @patchlevel
+      if md[:engine] && md[:engine_version] && @engine != :ruby
+        version_elements << @engine
+        version_elements << @engine_version
+      end
+      @version = version_elements.join("-")
     end
   end
 end
