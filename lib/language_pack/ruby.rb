@@ -267,7 +267,12 @@ ERROR
         Dir.chdir(build_ruby_path) do
           ruby_vm = "ruby"
           instrument "ruby.fetch_build_ruby" do
-            @fetchers[:buildpack].fetch_untar("#{ruby_version.version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz", fetch_error_message)
+            fetch_string = "#{ruby_version.version.sub(ruby_vm, "#{ruby_vm}-build")}.tgz"
+            if ruby_version.unsupported?
+              @fetchers[:buildpack].fetch_untar(fetch_string, fetch_error_message)
+            else
+              @fetchers[:buildpack].fetch_untar(fetch_string, fetch_error_message)
+            end
           end
         end
         error invalid_ruby_version_message unless $?.success?
@@ -296,6 +301,8 @@ ERROR_MSG
             FileUtils.rm_rf("app")
             FileUtils.rm(file)
             FileUtils.rm(sha_file)
+          elsif ruby_version.unsupported?
+            @fetchers[:unsupported].fetch_untar("#{ruby_version.version}.tgz", fetch_error_message)
           else
             @fetchers[:buildpack].fetch_untar("#{ruby_version.version}.tgz", fetch_error_message)
           end
