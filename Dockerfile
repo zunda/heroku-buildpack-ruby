@@ -1,6 +1,7 @@
 FROM fabiokung/heroku-buildpack-base
 
 ONBUILD ADD . /app
+ONBUILD WORKDIR /app
 ONBUILD RUN /var/lib/buildpack/bin/compile /app /var/cache/buildpack
 ONBUILD ENV HOME /app
 ONBUILD ENV PORT 5000
