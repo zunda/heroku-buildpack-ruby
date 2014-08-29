@@ -87,6 +87,7 @@ class LanguagePack::Ruby < LanguagePack::Base
       remove_vendor_bundle
       install_ruby
       install_jvm
+      install_jemalloc
       setup_language_pack_environment
       setup_profiled
       allow_git do
@@ -327,6 +328,11 @@ WARNING
     end
 
     true
+  end
+
+  def install_jemalloc
+    FileUtils.mkdir_p("vendor/jemalloc")
+    @fetchers[:mri].fetch_untar("jemalloc-3.5.1.tgz")
   end
 
   def new_app?
