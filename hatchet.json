@@ -7,8 +7,6 @@
     "sharpstone/connect_to_database_on_first_push",
     "sharpstone/no_rakefile",
     "sharpstone/bad_rakefile",
-    "sharpstone/mri_187_no_rake",
-    "sharpstone/mri_187_rake",
     "sharpstone/mri_200_no_rake",
     "sharpstone/mri_200_rake"
   ],
@@ -20,7 +18,6 @@
     "sharpstone/nokogiri_160"
   ],
   "ruby": [
-    "sharpstone/mri_187",
     "sharpstone/mri_193_p484",
     "sharpstone/ruby_193_jruby_173",
     "sharpstone/ruby_193_jruby_176",
@@ -31,14 +28,9 @@
   ],
   "rack": [
     "sharpstone/default_ruby",
-    "sharpstone/mri_187_nokogiri",
-    "sharpstone/mri_192",
     "sharpstone/mri_193",
     "sharpstone/mri_200",
     "sharpstone/mri_210"
-  ],
-  "rails2": [
-    "sharpstone/rails23_mri_187"
   ],
   "rails3": [
     "sharpstone/rails3_mri_193",
