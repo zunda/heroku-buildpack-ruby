@@ -525,18 +525,22 @@ WARNING
           puts "Bundle completed (#{"%.2f" % bundle_time}s)"
           log "bundle", :status => "success"
           puts "Cleaning up the bundler cache."
+          puts "================================================"
+          puts run "bundle list"
           instrument "ruby.bundle_clean" do
             # Only show bundle clean output when not using default cache
             if load_default_cache?
-              run "bundle clean > /dev/null"
+              pipe "bundle clean --verbose"
             else
-              pipe("#{bundle_bin} clean", out: "2> /dev/null")
+              pipe "#{bundle_bin} clean --verbose"
             end
           end
+          puts "storing"
           @bundler_cache.store
 
           # Keep gem cache out of the slug
           FileUtils.rm_rf("#{slug_vendor_base}/cache")
+          puts "totally done"
         else
           log "bundle", :status => "failure"
           error_message = "Failed to install gems via Bundler."
