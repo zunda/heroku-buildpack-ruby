@@ -620,11 +620,10 @@ WARNING
           puts "Cleaning up the bundler cache."
           instrument "ruby.bundle_clean" do
             # Always show bundle clean output
-            if load_default_cache?
             run("#{bundle_bin} clean -V", user_env: true)
-            end
           end
           @bundler_cache.store
+          puts "Done cleaning up the bundler cache."
 
           # Keep gem cache out of the slug
           FileUtils.rm_rf("#{slug_vendor_base}/cache")
