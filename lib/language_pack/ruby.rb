@@ -616,16 +616,9 @@ WARNING
 
         if $?.success?
           puts "Bundle completed (#{"%.2f" % bundle_time}s)"
-          puts ".bundle/config:"
-          puts File.open(".bundle/config").read
           log "bundle", :status => "success"
-          puts "Cleaning up the bundler cache."
-          instrument "ruby.bundle_clean" do
-            puts "Running: #{bundle_bin} clean -V"
-            run("#{bundle_bin} clean -V", user_env: true)
-          end
+          puts "Not running: #{bundle_bin} clean -V"
           @bundler_cache.store
-          puts "Done cleaning up the bundler cache."
 
           # Keep gem cache out of the slug
           FileUtils.rm_rf("#{slug_vendor_base}/cache")
