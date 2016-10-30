@@ -619,11 +619,9 @@ WARNING
           log "bundle", :status => "success"
           puts "Cleaning up the bundler cache."
           instrument "ruby.bundle_clean" do
-            # Only show bundle clean output when not using default cache
+            # Always show bundle clean output
             if load_default_cache?
-              run("#{bundle_bin} clean > /dev/null", user_env: true)
-            else
-              pipe("#{bundle_bin} clean", out: "2> /dev/null", user_env: true)
+            run("#{bundle_bin} clean -V", user_env: true)
             end
           end
           @bundler_cache.store
