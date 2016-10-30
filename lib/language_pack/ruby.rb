@@ -616,6 +616,8 @@ WARNING
 
         if $?.success?
           puts "Bundle completed (#{"%.2f" % bundle_time}s)"
+          puts ".bundle/config:"
+          puts File.open(".bundle/config").read
           log "bundle", :status => "success"
           puts "Cleaning up the bundler cache."
           instrument "ruby.bundle_clean" do
