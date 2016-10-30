@@ -619,7 +619,7 @@ WARNING
           log "bundle", :status => "success"
           puts "Cleaning up the bundler cache."
           instrument "ruby.bundle_clean" do
-            # Always show bundle clean output
+            puts "Running: #{bundle_bin} clean -V"
             run("#{bundle_bin} clean -V", user_env: true)
           end
           @bundler_cache.store
