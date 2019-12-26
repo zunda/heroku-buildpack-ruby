@@ -87,9 +87,13 @@ class LanguagePack::Helpers::RakeRunner
 
   def load_rake_tasks(options = {})
     instrument "ruby.rake_task_defined" do
+puts "MARKER21:#{__FILE__}:#{__LINE__}"
       @rake_tasks        ||= RakeTask.new("-P --trace").invoke(options.merge(quiet: true)).output
+puts "MARKER22:#{__FILE__}:#{__LINE__}"
       @rakefile_can_load ||= $?.success?
+puts "MARKER23:#{__FILE__}:#{__LINE__}"
       @rake_tasks
+puts "MARKER24:#{__FILE__}:#{__LINE__}"
     end
   end
 
