@@ -46,16 +46,16 @@ class LanguagePack::Helpers::RakeRunner
 
 quiet_option = false
 puts "MARKER210:#{__FILE__}:#{__LINE__}"
-puts `which rake`
+puts `cat vendor/bundle/bin/rake`
 
       puts "Running: rake #{task}" unless quiet_option
       time = Benchmark.realtime do
         cmd = "rake #{task}"
 
         if quiet_option
-          self.output = run("rake #{task}", options)
+          self.output = run("vendor/bundle/bin/rake #{task}", options)
         else
-          self.output = pipe("rake #{task}", options)
+          self.output = pipe("vendor/bundle/bin/rake #{task}", options)
         end
       end
       self.time = time
