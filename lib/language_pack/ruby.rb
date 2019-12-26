@@ -1013,9 +1013,13 @@ params = CGI.parse(uri.query || "")
       raise_on_fail      = bundler.gem_version('railties') && bundler.gem_version('railties') > Gem::Version.new('3.x')
 
       topic "Detecting rake tasks"
+puts "MARKER1:#{__FILE__}:#{__LINE__}"
       rake = LanguagePack::Helpers::RakeRunner.new(rake_gem_available)
+puts "MARKER2:#{__FILE__}:#{__LINE__}"
       rake.load_rake_tasks!({ env: rake_env }, raise_on_fail)
+puts "MARKER3:#{__FILE__}:#{__LINE__}"
       rake
+puts "MARKER4:#{__FILE__}:#{__LINE__}"
     end
   end
 
