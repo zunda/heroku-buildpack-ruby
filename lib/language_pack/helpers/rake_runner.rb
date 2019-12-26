@@ -44,6 +44,10 @@ class LanguagePack::Helpers::RakeRunner
       options      = @default_options.merge(options)
       quiet_option = options.delete(:quiet)
 
+quiet_option = false
+puts "MARKER210:#{__FILE__}:#{__LINE__}"
+puts `which rake`
+
       puts "Running: rake #{task}" unless quiet_option
       time = Benchmark.realtime do
         cmd = "rake #{task}"
