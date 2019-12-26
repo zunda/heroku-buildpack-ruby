@@ -49,6 +49,7 @@ puts "MARKER210:#{__FILE__}:#{__LINE__}"
 puts `cat vendor/bundle/bin/rake`
 puts `which ruby`
 puts `ruby -e '
+# frozen_string_literal: true
 require "pathname"
 require "rubygems"
 require "bundler/setup"
