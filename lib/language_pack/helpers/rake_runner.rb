@@ -48,6 +48,21 @@ quiet_option = false
 puts "MARKER210:#{__FILE__}:#{__LINE__}"
 puts `cat vendor/bundle/bin/rake`
 puts `which ruby`
+puts `ruby -e '
+require "pathname"
+require "rubygems"
+require "bundler/setup"
+
+puts RUBY_DESCRIPTION
+
+begin
+  require "nothing"
+rescue LoadError => e
+  puts e
+  puts e.frozen?
+end
+'
+`
 
       puts "Running: rake #{task}" unless quiet_option
       time = Benchmark.realtime do
