@@ -47,6 +47,7 @@ class LanguagePack::Helpers::RakeRunner
 quiet_option = false
 puts "MARKER210:#{__FILE__}:#{__LINE__}"
 puts `cat vendor/bundle/bin/rake`
+puts `which ruby`
 
       puts "Running: rake #{task}" unless quiet_option
       time = Benchmark.realtime do
