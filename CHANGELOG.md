@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v288-install-local]
+
+- Set `BUNDLE_INSTALL_LOCAL` to `--local` or `--prefer-local` to run `bundle install` with the option
 
 ## [v288] - 2025-01-06
 

@@ -732,6 +732,10 @@ BUNDLE
       bundle_command << "BUNDLE_DEPLOYMENT=#{ENV["BUNDLE_DEPLOYMENT"]} " if ENV["BUNDLE_DEPLOYMENT"] # Unset on windows since we delete the Gemfile.lock
       bundle_command << "BUNDLE_GLOBAL_PATH_APPENDS_RUBY_SCOPE=#{ENV["BUNDLE_GLOBAL_PATH_APPENDS_RUBY_SCOPE"]} " if bundler.needs_ruby_global_append_path?
       bundle_command << "bundle install -j4"
+      case env("BUNDLE_INSTALL_LOCAL")
+      when "--local", "--prefer-local"
+        bundle_command << " " + env("BUNDLE_INSTALL_LOCAL")
+      end
 
       topic("Installing dependencies using bundler #{bundler.version}")
 
